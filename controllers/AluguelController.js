@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Aluguel } from '../models/Aluguel.js';
 
-const USUARIOS_API = 'http://usuarios-service/api/usuarios';
+const USUARIOS_API = 'https://servico-usuarios-production.up.railway.app/usuarios';
 const LIVROS_API = 'http://livros-service/api/livros';
 const PAGAMENTOS_API = 'http://pagamentos-service/api/pagamentos';
 
