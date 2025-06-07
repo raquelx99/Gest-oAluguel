@@ -2,8 +2,8 @@ import axios from 'axios';
 import { Aluguel } from '../models/Aluguel.js';
 
 const USUARIOS_API = 'https://servico-usuarios-production.up.railway.app/usuarios';
-const LIVROS_API = 'http://livros-service/api/livros';
-const PAGAMENTOS_API = 'http://pagamentos-service/api/pagamentos';
+const LIVROS_API = 'http://miocroservice-books-production.up.railway.app/';
+const PAGAMENTOS_API = 'https://microsservico-pagamento.onrender.com/';
 
 export const criarAluguel = async (req, res) => {
   try {
@@ -16,14 +16,14 @@ export const criarAluguel = async (req, res) => {
       return res.status(400).json({ mensagem: 'Usuário inadimplente.' });
     }
 
-    const livroRes = await axios.get(`${LIVROS_API}/${livroId}`);
+    const livroRes = await axios.get(`${LIVROS_API}/livros/${livroId}`);
     const livro = livroRes.data;
 
     if (!livro.disponivel) {
       return res.status(400).json({ mensagem: 'Livro indisponível.' });
     }
 
-    await axios.patch(`${LIVROS_API}/${livroId}`, { disponivel: false });
+    await axios.patch(`${LIVROS_API}/livros/${livroId}`, { disponivel: false });
 
     const aluguel = new Aluguel({
       prazo,
@@ -92,7 +92,7 @@ export const devolverLivro = async (req, res) => {
     aluguel.dataDevolucao = dataDevolucao;
     await aluguel.save();
 
-    await axios.patch(`${LIVROS_API}/${aluguel.livro.id}`, { disponivel: true });
+    await axios.patch(`${LIVROS_API}/livros/${aluguel.livro.id}`, { disponivel: true });
 
     res.status(200).json({ mensagem: 'Livro devolvido com sucesso.', aluguel });
   } catch (error) {
