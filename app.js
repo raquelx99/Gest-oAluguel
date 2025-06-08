@@ -3,7 +3,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 
-import aluguelRoutes from './routes/aluguelRoutes';
+import aluguelRoutes from './routes/aluguelRoutes.js';
 
 dotenv.config();
 

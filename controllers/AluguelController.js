@@ -2,40 +2,59 @@ import axios from 'axios';
 import { Aluguel } from '../models/Aluguel.js';
 
 const USUARIOS_API = 'https://servico-usuarios-production.up.railway.app/usuarios';
-const LIVROS_API = 'http://miocroservice-books-production.up.railway.app/';
-const PAGAMENTOS_API = 'https://microsservico-pagamento.onrender.com/';
+const LIVROS_API = 'https://miocroservice-books-production.up.railway.app/livros';
+const PAGAMENTOS_API = 'https://microsservico-pagamento.onrender.com/api/pagamentos';
+const MULTA_POR_DIA = 2.0;
 
 export const criarAluguel = async (req, res) => {
   try {
-    const { usuarioId, livroId, prazo } = req.body;
+    const { usuarioId, livroId } = req.body;
 
-    const usuarioRes = await axios.get(`${USUARIOS_API}/${usuarioId}`);
+    let usuarioRes;
+    try {
+      usuarioRes = await axios.get(`${USUARIOS_API}/${usuarioId}`);
+    } catch (err) {
+      console.error('Falha ao buscar usuário:', err.response?.status, err.response?.data);
+      return res.status(400).json({ erro: 'Usuário não encontrado ou API inacessível.' });
+    }
     const usuario = usuarioRes.data;
 
     if (usuario.inadimplente) {
       return res.status(400).json({ mensagem: 'Usuário inadimplente.' });
     }
 
-    const livroRes = await axios.get(`${LIVROS_API}/livros/${livroId}`);
+    let livroRes;
+    try {
+      livroRes = await axios.get(`${LIVROS_API}/${livroId}`);
+    } catch (err) {
+      console.error('Falha ao buscar livro:', err.response?.status, err.response?.data);
+      return res.status(400).json({ erro: 'Livro não encontrado ou API inacessível.' });
+    }
     const livro = livroRes.data;
 
-    if (!livro.disponivel) {
+    if (livro.quantidade <= 0) {
       return res.status(400).json({ mensagem: 'Livro indisponível.' });
     }
 
-    await axios.patch(`${LIVROS_API}/livros/${livroId}`, { disponivel: false });
+    const novaQuantidade = livro.quantidade - 1;
+
+    await axios.patch(`${LIVROS_API}/${livroId}`, {
+      quantidade: novaQuantidade
+    });
 
     const aluguel = new Aluguel({
-      prazo,
+      prazo: 15,
       dataLocacao: new Date(),
       usuario: { id: usuario.id, nome: usuario.nome },
-      livro: { id: livro.id, titulo: livro.titulo }
+      livro:   { id: livro.id,   titulo: livro.titulo }
     });
 
     await aluguel.save();
-    res.status(201).json(aluguel);
+    return res.status(201).json(aluguel);
+
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao criar aluguel.', detalhes: error.message });
+    console.error('Erro em criarAluguel:', error);
+    return res.status(500).json({ erro: 'Erro ao criar aluguel.', detalhes: error.message });
   }
 };
 
@@ -74,33 +93,40 @@ export const devolverLivro = async (req, res) => {
     if (!aluguel) return res.status(404).json({ mensagem: 'Aluguel não encontrado.' });
 
     const diasUsados = Math.ceil((new Date(dataDevolucao) - aluguel.dataLocacao) / (1000 * 60 * 60 * 24));
-    const diasPermitidos = parseInt(aluguel.prazo);
+    const diasPermitidos = aluguel.prazo;
+
+    let resposta = { mensagem: 'Livro devolvido dentro do prazo.', aluguel };
 
     if (diasUsados > diasPermitidos) {
-      const diasAtraso = diasUsados - diasPermitidos;
-      const valorMulta = diasAtraso * 2.0;
-
-      const pagamentoRes = await axios.post(`${PAGAMENTOS_API}`, {
-        tipo: 'MULTA',
-        valor: valorMulta
-      });
-
-      const pagamento = pagamentoRes.data;
-      aluguel.pagamento = pagamento;
+      const atraso = diasUsados - diasPermitidos;
+      const valorMulta = atraso * MULTA_POR_DIA;
+      const menuRes = await axios.get(`${PAGAMENTOS_API}/api/menu`);
+      resposta = {
+        mensagem: 'Livro devolvido com atraso.',
+        aluguel,
+        atrasoDias: atraso,
+        valorMulta,
+        metodosPagamento: menuRes.data.metodosPagamento,
+        multa: true
+      };
     }
 
     aluguel.dataDevolucao = dataDevolucao;
     await aluguel.save();
 
-    await axios.patch(`${LIVROS_API}/livros/${aluguel.livro.id}`, { disponivel: true });
+    const livroRes = await axios.get(`${LIVROS_API}/${aluguel.livro.id}`);
+    const quantidadeAtual = livroRes.data.quantidade;
 
-    res.status(200).json({ mensagem: 'Livro devolvido com sucesso.', aluguel });
+    await axios.patch(`${LIVROS_API}/${aluguel.livro.id}`, { quantidade: quantidadeAtual + 1 });
+
+    return res.status(200).json(resposta);
   } catch (error) {
-    res.status(500).json({ erro: 'Erro ao devolver livro.' });
+    console.error('Erro ao devolver livro:', error);
+    return res.status(500).json({ erro: 'Erro ao devolver livro.' });
   }
 };
 
-export const buscarAluguel = async (req, res) => {
+export const buscarAluguelPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const aluguel = await Aluguel.findById(id);
