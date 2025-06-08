@@ -102,18 +102,18 @@ export const devolverLivro = async (req, res) => {
       const valorMulta = atraso * MULTA_POR_DIA;
 
       const usuarioId = aluguel.usuario.id;
-      const usuarioRes = await axios.get(`${USUARIOS_API}/${usuarioId}`);
-      const usuario = usuarioRes.data;
-      const novoSaldo = (usuario.saldoDevedor || 0) + valorMulta;
-      await axios.patch(`${USUARIOS_API}/${usuarioId}`, { saldoDevedor: novoSaldo });
+      try {
+        await axios.patch(`${USUARIOS_API}/${usuarioId}/saldo`, { valor: valorMulta });
+      } catch (err) {
+        console.error('Erro ao atualizar saldo do usuário:', err.response?.status, err.response?.data);
+      }
 
       resposta = {
         mensagem: 'Livro devolvido com atraso e multa aplicada no saldo devedor.',
         aluguel,
         atrasoDias: atraso,
         valorMulta,
-        multa: true,
-        novoSaldoDevedor: novoSaldo
+        multa: true
       };
     }
 
@@ -122,8 +122,8 @@ export const devolverLivro = async (req, res) => {
 
     const livroRes = await axios.get(`${LIVROS_API}/${aluguel.livro.id}`);
     const quantidadeAtual = livroRes.data.quantidade;
-
-    await axios.patch(`${LIVROS_API}/${aluguel.livro.id}`, { quantidade: quantidadeAtual + 1 });
+    const novaQt = quantidadeAtual + 1;
+    await axios.patch(`${LIVROS_API}/${aluguel.livro.id}`, { quantidade: novaQt });
 
     return res.status(200).json(resposta);
   } catch (error) {
