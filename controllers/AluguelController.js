@@ -100,14 +100,20 @@ export const devolverLivro = async (req, res) => {
     if (diasUsados > diasPermitidos) {
       const atraso = diasUsados - diasPermitidos;
       const valorMulta = atraso * MULTA_POR_DIA;
-      const menuRes = await axios.get(`${PAGAMENTOS_API}/api/menu`);
+
+      const usuarioId = aluguel.usuario.id;
+      const usuarioRes = await axios.get(`${USUARIOS_API}/${usuarioId}`);
+      const usuario = usuarioRes.data;
+      const novoSaldo = (usuario.saldoDevedor || 0) + valorMulta;
+      await axios.patch(`${USUARIOS_API}/${usuarioId}`, { saldoDevedor: novoSaldo });
+
       resposta = {
-        mensagem: 'Livro devolvido com atraso.',
+        mensagem: 'Livro devolvido com atraso e multa aplicada no saldo devedor.',
         aluguel,
         atrasoDias: atraso,
         valorMulta,
-        metodosPagamento: menuRes.data.metodosPagamento,
-        multa: true
+        multa: true,
+        novoSaldoDevedor: novoSaldo
       };
     }
 
