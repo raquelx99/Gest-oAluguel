@@ -3,7 +3,6 @@ import { Aluguel } from '../models/Aluguel.js';
 
 const USUARIOS_API = 'https://servico-usuarios-production.up.railway.app/usuarios';
 const LIVROS_API = 'https://miocroservice-books-production.up.railway.app/livros';
-const PAGAMENTOS_API = 'https://microsservico-pagamento.onrender.com/api/pagamentos';
 const MULTA_POR_DIA = 2.0;
 
 export const criarAluguel = async (req, res) => {
