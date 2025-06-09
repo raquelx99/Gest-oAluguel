@@ -2,7 +2,7 @@
 
 ## Iniciar o Servidor
 npm install  
-npm nodemon app.js
+nodemon app.js
 
 Base URL (local): http://localhost:3000
 
